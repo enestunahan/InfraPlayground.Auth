@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.4" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.4">
       <PrivateAssets>all</PrivateAssets>
@@ -16,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\\..\\Core\\InfraPlayground.Auth.Application\\InfraPlayground.Auth.Application.csproj" />
+    <ProjectReference Include="..\\..\\Infrastructure\\InfraPlayground.Auth.Infrastructure\\InfraPlayground.Auth.Infrastructure.csproj" />
     <ProjectReference Include="..\\..\\Infrastructure\\InfraPlayground.Auth.Persistence\\InfraPlayground.Auth.Persistence.csproj" />
   </ItemGroup>
 

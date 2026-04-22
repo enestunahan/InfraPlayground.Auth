@@ -11,6 +11,11 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
         {
             await next(context);
         }
+        catch (AuthenticationFailedException ex)
+        {
+            logger.LogWarning(ex, "Authentication failed");
+            await WriteAsync(context, StatusCodes.Status401Unauthorized, "Authentication Failed", ex.Message);
+        }
         catch (NotFoundException ex)
         {
             await WriteAsync(context, StatusCodes.Status404NotFound, "Not Found", ex.Message);
