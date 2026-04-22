@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Core/">
+    <Project Path="src/Core/InfraPlayground.Auth.Application/InfraPlayground.Auth.Application.csproj" />
+    <Project Path="src/Core/InfraPlayground.Auth.Domain/InfraPlayground.Auth.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/InfraPlayground.Auth.Persistence/InfraPlayground.Auth.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/src/Presentation/">
+    <Project Path="src/Presentation/InfraPlayground.Auth.API/InfraPlayground.Auth.API.csproj" />
+  </Folder>
+</Solution>
