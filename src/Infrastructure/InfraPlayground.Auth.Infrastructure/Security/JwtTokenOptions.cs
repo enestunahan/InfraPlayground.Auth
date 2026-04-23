@@ -1,4 +1,4 @@
-namespace InfraPlayground.Auth.Application.Common.Security;
+namespace InfraPlayground.Auth.Infrastructure.Security;
 
 public sealed class JwtTokenOptions
 {

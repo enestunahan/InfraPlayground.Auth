@@ -1,5 +1,5 @@
 using System.Text;
-using InfraPlayground.Auth.Application.Common.Security;
+using InfraPlayground.Auth.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
