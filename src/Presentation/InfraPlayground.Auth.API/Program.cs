@@ -2,6 +2,7 @@ using InfraPlayground.Auth.API.Extensions;
 using InfraPlayground.Auth.API.Middlewares;
 using InfraPlayground.Auth.Application;
 using InfraPlayground.Auth.Infrastructure;
+using InfraPlayground.Auth.Infrastructure.Authorization;
 using InfraPlayground.Auth.Persistence;
 using InfraPlayground.Auth.Persistence.Seed;
 
@@ -17,7 +18,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
-builder.Services.AddAuthorization();
+builder.Services.AddAppAuthorization(); // policies + handlers + permission policy provider
 
 var app = builder.Build();
 

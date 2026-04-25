@@ -9,12 +9,21 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace InfraPlayground.Auth.API.Controllers.Admin;
 
+// Controller seviyesinde authorize kullanmıyoruz çünkü her endpoint farklı
+// permission gerektiriyor. Yine de "en azından authenticated olmalı" demek
+// için boş [Authorize] de eklenebilir; biz burayı tamamen permission'lara
+// devrediyoruz çünkü zaten her endpoint kendi izniyle korunuyor.
 [ApiController]
 [Route("api/admin/books")]
-[Authorize(Roles = AppRoles.Admin)]
 public sealed class AdminBooksController(ISender sender) : ControllerBase
 {
+    // PERMISSION-BASED:
+    //   - Endpoint hangi rolün geleceğini bilmez, sadece "Books.Read" ister.
+    //   - Admin, Editor, User, Viewer hepsinde Books.Read permission'ı var.
+    //   - Yarın "Manager" diye yeni bir rol gelse, sadece RolePermissions'a
+    //     ekleyince bu endpoint'e erişebilir. Endpoint'e dokunmaya gerek yok.
     [HttpGet]
+    [Authorize(Policy = Permissions.Books.Read)]
     [ProducesResponseType(typeof(GetBooksForAdminQueryResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<GetBooksForAdminQueryResponse>> GetBooksForAdmin(CancellationToken cancellationToken)
     {
@@ -23,6 +32,7 @@ public sealed class AdminBooksController(ISender sender) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = Permissions.Books.Create)]  // Admin + Editor
     [ProducesResponseType(typeof(CreateBookCommandResponse), StatusCodes.Status201Created)]
     public async Task<ActionResult<CreateBookCommandResponse>> CreateBook(
         [FromBody] CreateBookCommand command,
@@ -33,6 +43,7 @@ public sealed class AdminBooksController(ISender sender) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = Permissions.Books.Update)]  // Admin + Editor
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateBook(
@@ -51,6 +62,7 @@ public sealed class AdminBooksController(ISender sender) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = Permissions.Books.Delete)]  // Sadece Admin
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteBook([FromRoute] Guid id, CancellationToken cancellationToken)
