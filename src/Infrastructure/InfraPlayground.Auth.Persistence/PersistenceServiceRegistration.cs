@@ -1,8 +1,10 @@
 using InfraPlayground.Auth.Application.Common.Repositories;
 using InfraPlayground.Auth.Application.Common.Repositories.Books;
+using InfraPlayground.Auth.Domain.Entities.Identity;
 using InfraPlayground.Auth.Persistence.Contexts;
 using InfraPlayground.Auth.Persistence.Repositories;
 using InfraPlayground.Auth.Persistence.Repositories.Books;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +22,21 @@ public static class PersistenceServiceRegistration
 
             options.UseNpgsql(connectionString);
         });
+
+        services.AddIdentityCore<AppUser>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+                options.Password.RequiredLength = 6;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireDigit = false;
+
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+                options.Lockout.MaxFailedAccessAttempts = 5;
+            })
+            .AddRoles<AppRole>()
+            .AddEntityFrameworkStores<InfraPlaygroundAuthDbContext>();
 
         services.AddScoped(typeof(IReadRepository<>), typeof(ReadRepository<>));
         services.AddScoped(typeof(IWriteRepository<>), typeof(WriteRepository<>));

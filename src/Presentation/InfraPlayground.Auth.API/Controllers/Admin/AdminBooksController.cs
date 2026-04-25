@@ -1,14 +1,17 @@
+using InfraPlayground.Auth.Application.Common.Authorization;
 using InfraPlayground.Auth.Application.Features.Books.Commands.CreateBook;
 using InfraPlayground.Auth.Application.Features.Books.Commands.DeleteBook;
 using InfraPlayground.Auth.Application.Features.Books.Commands.UpdateBook;
 using InfraPlayground.Auth.Application.Features.Books.Queries.GetBooksForAdmin;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InfraPlayground.Auth.API.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin/books")]
+[Authorize(Roles = AppRoles.Admin)]
 public sealed class AdminBooksController(ISender sender) : ControllerBase
 {
     [HttpGet]
