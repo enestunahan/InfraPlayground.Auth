@@ -73,4 +73,46 @@ public sealed class HomeController(ISender sender, ICurrentUserService currentUs
             message = "Bu endpoint sadece Admin rolüne açık."
         });
     }
+
+    // ============================================================
+    //  POLICY ÖRNEKLERİ
+    // ============================================================
+
+    /// <summary>
+    /// Policy örneği: User rolü VE 18+ yaş.
+    /// İçeride iki requirement var (RolesRequirement + MinimumAgeRequirement),
+    /// ikisinin de Succeed olması gerekir (AND).
+    ///
+    /// Test akışı:
+    ///   - admin (30y, ama User rolü yok)        -> 403 (rol fail)
+    ///   - enes.editor (25y, User rolü yok)      -> 403
+    ///   - enes.user (17y, User rolü VAR)        -> 403 (yaş fail)
+    ///   - enes.viewer (22y, User rolü yok)      -> 403
+    ///   - 18+ yaşında User rolüne sahip biri    -> 200
+    /// </summary>
+    [HttpGet("adult-user")]
+    [Authorize(Policy = Policies.AdultUser)]
+    public IActionResult AdultUser()
+    {
+        return Ok(new
+        {
+            message = "Bu endpoint sadece User rolüne sahip ve 18 yaşından büyük kullanıcılara açık."
+        });
+    }
+
+    /// <summary>
+    /// Permission örneği: "Books.Read" izni gerekiyor.
+    /// Hangi rol bu permission'a sahip onu RolePermissions belirler.
+    /// Endpoint hangi rol olduğunu BİLMEZ — sadece permission ismini bilir.
+    /// </summary>
+    [HttpGet("books-permission-test")]
+    [Authorize(Policy = Permissions.Books.Read)]
+    public IActionResult BooksPermissionTest()
+    {
+        return Ok(new
+        {
+            message = "Bu endpoint 'Books.Read' permission'una sahip kullanıcılara açık.",
+            currentUserPermissions = User.FindAll(Permissions.ClaimType).Select(x => x.Value).ToArray()
+        });
+    }
 }

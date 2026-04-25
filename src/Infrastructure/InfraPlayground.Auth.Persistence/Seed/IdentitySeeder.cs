@@ -12,12 +12,17 @@ public static class IdentitySeeder
 
     private static readonly string[] Roles = [AppRoles.Admin, AppRoles.Editor, AppRoles.User, AppRoles.Viewer];
 
+    // BirthDate'leri policy testleri için bilinçli farklı yaşlarda seçtik:
+    //  - admin     -> 30 yaş  (her şeye yetkili, yaşı da büyük)
+    //  - editor    -> 25 yaş
+    //  - user      -> 17 yaş  (MinimumAge(18) policy'sini test etmek için bilinçli küçük!)
+    //  - viewer    -> 22 yaş
     private static readonly SeedUser[] Users =
     [
-        new("admin", "admin@infraplayground.local", "Admin User", AppRoles.Admin),
-        new("enes.editor", "enes.editor@infraplayground.local", "Enes Editor", AppRoles.Editor),
-        new("enes.user", "enes.user@infraplayground.local", "Enes User", AppRoles.User),
-        new("enes.viewer", "enes.viewer@infraplayground.local", "Enes Viewer", AppRoles.Viewer)
+        new("admin",       "admin@infraplayground.local",       "Admin User",  AppRoles.Admin,  new DateOnly(1995, 1, 1)),
+        new("enes.editor", "enes.editor@infraplayground.local", "Enes Editor", AppRoles.Editor, new DateOnly(2000, 6, 15)),
+        new("enes.user",   "enes.user@infraplayground.local",   "Enes User",   AppRoles.User,   new DateOnly(2008, 9, 1)),
+        new("enes.viewer", "enes.viewer@infraplayground.local", "Enes Viewer", AppRoles.Viewer, new DateOnly(2003, 3, 20))
     ];
 
     public static async Task SeedAsync(IServiceProvider services)
@@ -57,7 +62,8 @@ public static class IdentitySeeder
                     UserName = seed.UserName,
                     Email = seed.Email,
                     EmailConfirmed = true,
-                    NameSurname = seed.NameSurname
+                    NameSurname = seed.NameSurname,
+                    BirthDate = seed.BirthDate
                 };
 
                 var createResult = await userManager.CreateAsync(user, DefaultPassword);
@@ -76,17 +82,47 @@ public static class IdentitySeeder
 
                 logger.LogInformation("Seed: kullanıcı oluşturuldu -> {UserName} ({Role})", seed.UserName, seed.Role);
             }
-            else if (!await userManager.IsInRoleAsync(existing, seed.Role))
+            else
             {
-                var roleAssign = await userManager.AddToRoleAsync(existing, seed.Role);
-                if (!roleAssign.Succeeded)
+                // Kullanıcı zaten var. Şu mantığı izliyoruz:
+                //  - Eksik rol varsa ekle.
+                //  - BirthDate hâlâ null ise (eski schema'dan kalma) seed değeriyle doldur.
+                //  - Mevcut bir BirthDate'e ASLA dokunma — kullanıcı kendi profilinden değiştirmiş olabilir.
+                //
+                // Bu pattern "idempotent backfill" — seeder her açılışta güvenle çalışır,
+                // veriyi bozmaz, sadece eksiği tamamlar.
+                var needsUpdate = false;
+
+                if (existing.BirthDate is null)
                 {
-                    var errors = string.Join(" | ", roleAssign.Errors.Select(e => $"{e.Code}: {e.Description}"));
-                    throw new InvalidOperationException($"Rol ataması başarısız ({seed.UserName} -> {seed.Role}): {errors}");
+                    existing.BirthDate = seed.BirthDate;
+                    needsUpdate = true;
+                    logger.LogInformation("Seed: BirthDate dolduruldu -> {UserName} ({BirthDate})",
+                        seed.UserName, seed.BirthDate);
+                }
+
+                if (!await userManager.IsInRoleAsync(existing, seed.Role))
+                {
+                    var roleAssign = await userManager.AddToRoleAsync(existing, seed.Role);
+                    if (!roleAssign.Succeeded)
+                    {
+                        var errors = string.Join(" | ", roleAssign.Errors.Select(e => $"{e.Code}: {e.Description}"));
+                        throw new InvalidOperationException($"Rol ataması başarısız ({seed.UserName} -> {seed.Role}): {errors}");
+                    }
+                }
+
+                if (needsUpdate)
+                {
+                    var updateResult = await userManager.UpdateAsync(existing);
+                    if (!updateResult.Succeeded)
+                    {
+                        var errors = string.Join(" | ", updateResult.Errors.Select(e => $"{e.Code}: {e.Description}"));
+                        throw new InvalidOperationException($"Kullanıcı güncellenemedi ({seed.UserName}): {errors}");
+                    }
                 }
             }
         }
     }
 
-    private sealed record SeedUser(string UserName, string Email, string NameSurname, string Role);
+    private sealed record SeedUser(string UserName, string Email, string NameSurname, string Role, DateOnly BirthDate);
 }
