@@ -9,6 +9,8 @@ public sealed class InfraPlaygroundAuthDbContext(DbContextOptions<InfraPlaygroun
     : IdentityDbContext<AppUser, AppRole, string>(options)
 {
     public DbSet<Book> Books => Set<Book>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
