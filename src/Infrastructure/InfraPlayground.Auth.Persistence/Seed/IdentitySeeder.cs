@@ -32,7 +32,12 @@ public static class IdentitySeeder
         new(Permissions.Books.Create, "Kitap kaydı oluşturma izni"),
         new(Permissions.Books.Read, "Kitap kayıtlarını görüntüleme izni"),
         new(Permissions.Books.Update, "Kitap kayıtlarını güncelleme izni"),
-        new(Permissions.Books.Delete, "Kitap kayıtlarını silme izni")
+        new(Permissions.Books.Delete, "Kitap kayıtlarını silme izni"),
+
+        new(Permissions.PermissionManagement.Create, "Permission kaydı oluşturma izni"),
+        new(Permissions.PermissionManagement.Read, "Permission kayıtlarını görüntüleme izni"),
+        new(Permissions.PermissionManagement.Update, "Permission kayıtlarını güncelleme izni"),
+        new(Permissions.PermissionManagement.Delete, "Permission kayıtlarını silme izni")
     ];
 
     public static async Task SeedAsync(IServiceProvider services)
@@ -164,6 +169,9 @@ public static class IdentitySeeder
             await dbContext.SaveChangesAsync();
             logger.LogInformation("Seed: {PermissionCount} permission eklendi.", missingPermissions.Count);
         }
+        var newPermissionCodeSet = missingPermissions
+            .Select(permission => permission.Code)
+            .ToHashSet(StringComparer.Ordinal);
 
         var roleList = await roleManager.Roles
             .Where(role => role.Name != null)
@@ -182,11 +190,12 @@ public static class IdentitySeeder
             .Select(rolePermission => new { rolePermission.RoleId, rolePermission.PermissionId })
             .ToListAsync();
 
-        // DB tabanli yetki yonetimine gectigimiz icin role-permission mapping
-        // tablosunu runtime/manuel olarak yonetmek isteyebiliriz.
-        // Bu nedenle default map backfill'i sadece ilk bootstrap'ta (tablo bosken)
-        // uyguluyoruz; sonrasinda mevcut atamalari zorla degistirmiyoruz.
-        if (existingAssignments.Count > 0)
+        var seedAllAssignments = existingAssignments.Count == 0;
+
+        // Role-permission tablosu boşsa ilk bootstrap'ta tüm default atamaları basarız.
+        // Tablo doluysa yalnızca bu çalışmada yeni eklenen permission kodlarının
+        // default atamalarını ekleriz; mevcut manuel değişikliklere dokunmayız.
+        if (!seedAllAssignments && newPermissionCodeSet.Count == 0)
             return;
 
         var existingAssignmentKeys = existingAssignments
@@ -202,6 +211,9 @@ public static class IdentitySeeder
 
             foreach (var permissionCode in permissionCodes.Distinct(StringComparer.Ordinal))
             {
+                if (!seedAllAssignments && !newPermissionCodeSet.Contains(permissionCode))
+                    continue;
+
                 if (!permissionIdByCode.TryGetValue(permissionCode, out var permissionId))
                     continue;
 

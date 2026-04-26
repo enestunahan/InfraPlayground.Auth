@@ -22,7 +22,11 @@ public static class RolePermissions
                 Permissions.Books.Create,
                 Permissions.Books.Read,
                 Permissions.Books.Update,
-                Permissions.Books.Delete
+                Permissions.Books.Delete,
+                Permissions.PermissionManagement.Create,
+                Permissions.PermissionManagement.Read,
+                Permissions.PermissionManagement.Update,
+                Permissions.PermissionManagement.Delete
             },
 
             // Editor silemez ama oluşturup güncelleyebilir
@@ -30,7 +34,8 @@ public static class RolePermissions
             {
                 Permissions.Books.Create,
                 Permissions.Books.Read,
-                Permissions.Books.Update
+                Permissions.Books.Update,
+                Permissions.PermissionManagement.Read
             },
 
             // User sadece okuyabilir
