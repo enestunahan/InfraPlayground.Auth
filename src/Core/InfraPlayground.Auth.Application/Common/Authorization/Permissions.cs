@@ -25,4 +25,12 @@ public static class Permissions
         public const string Update = "Permissions.Books.Update";
         public const string Delete = "Permissions.Books.Delete";
     }
+
+    public static class PermissionManagement
+    {
+        public const string Create = "Permissions.PermissionManagement.Create";
+        public const string Read   = "Permissions.PermissionManagement.Read";
+        public const string Update = "Permissions.PermissionManagement.Update";
+        public const string Delete = "Permissions.PermissionManagement.Delete";
+    }
 }
