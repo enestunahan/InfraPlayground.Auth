@@ -1,9 +1,11 @@
+using InfraPlayground.Auth.Application.Common.Authorization;
 using InfraPlayground.Auth.Application.Common.Repositories;
 using InfraPlayground.Auth.Application.Common.Repositories.Books;
 using InfraPlayground.Auth.Domain.Entities.Identity;
 using InfraPlayground.Auth.Persistence.Contexts;
 using InfraPlayground.Auth.Persistence.Repositories;
 using InfraPlayground.Auth.Persistence.Repositories.Books;
+using InfraPlayground.Auth.Persistence.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -42,6 +44,7 @@ public static class PersistenceServiceRegistration
         services.AddScoped(typeof(IWriteRepository<>), typeof(WriteRepository<>));
         services.AddScoped<IBookReadRepository, BookReadRepository>();
         services.AddScoped<IBookWriteRepository, BookWriteRepository>();
+        services.AddScoped<IPermissionLookupService, PermissionLookupService>();
 
         return services;
     }

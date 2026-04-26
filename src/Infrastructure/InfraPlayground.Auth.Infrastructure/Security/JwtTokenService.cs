@@ -15,7 +15,8 @@ namespace InfraPlayground.Auth.Infrastructure.Security;
 
 public sealed class JwtTokenService(
     IOptions<JwtTokenOptions> tokenOptions,
-    UserManager<AppUser> userManager) : ITokenService
+    UserManager<AppUser> userManager,
+    IPermissionLookupService permissionLookupService) : ITokenService
 {
     private readonly JwtTokenOptions _tokenOptions = tokenOptions.Value;
 
@@ -75,10 +76,11 @@ public sealed class JwtTokenService(
         var roles = await userManager.GetRolesAsync(user);
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-        // Permission'lar — kullanıcının rollerinden türetilir, claim olarak basılır.
-        // Authorization sırasında PermissionHandler bu claim'leri kontrol eder,
-        // DB'ye gitmez. Stateless authorization'ın anahtarı bu.
-        foreach (var permission in RolePermissions.GetPermissionsForRoles(roles))
+        // Permission'lar DB'deki RolePermissions tablosundan okunur
+        // ve JWT'ye basılır. Authorization sırasında PermissionHandler bu
+        // claim'leri kontrol eder; request başına DB'ye gidilmez.
+        var permissions = await permissionLookupService.GetPermissionsForRolesAsync(roles);
+        foreach (var permission in permissions)
         {
             claims.Add(new Claim(Permissions.ClaimType, permission));
         }

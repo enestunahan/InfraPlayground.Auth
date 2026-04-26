@@ -1,8 +1,10 @@
 using InfraPlayground.Auth.Application.Common.Authorization;
 using InfraPlayground.Auth.Domain.Entities.Identity;
+using InfraPlayground.Auth.Persistence.Contexts;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace InfraPlayground.Auth.Persistence.Seed;
 
@@ -25,10 +27,19 @@ public static class IdentitySeeder
         new("enes.viewer", "enes.viewer@infraplayground.local", "Enes Viewer", AppRoles.Viewer, new DateOnly(2003, 3, 20))
     ];
 
+    private static readonly SeedPermission[] PermissionSeeds =
+    [
+        new(Permissions.Books.Create, "Kitap kaydı oluşturma izni"),
+        new(Permissions.Books.Read, "Kitap kayıtlarını görüntüleme izni"),
+        new(Permissions.Books.Update, "Kitap kayıtlarını güncelleme izni"),
+        new(Permissions.Books.Delete, "Kitap kayıtlarını silme izni")
+    ];
+
     public static async Task SeedAsync(IServiceProvider services)
     {
         var roleManager = services.GetRequiredService<RoleManager<AppRole>>();
         var userManager = services.GetRequiredService<UserManager<AppUser>>();
+        var dbContext = services.GetRequiredService<InfraPlaygroundAuthDbContext>();
         var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("IdentitySeeder");
 
         foreach (var roleName in Roles)
@@ -50,6 +61,8 @@ public static class IdentitySeeder
 
             logger.LogInformation("Seed: rol oluşturuldu -> {Role}", roleName);
         }
+
+        await SeedPermissionsAsync(dbContext, roleManager, logger);
 
         foreach (var seed in Users)
         {
@@ -124,5 +137,95 @@ public static class IdentitySeeder
         }
     }
 
+    private static async Task SeedPermissionsAsync(
+        InfraPlaygroundAuthDbContext dbContext,
+        RoleManager<AppRole> roleManager,
+        ILogger logger)
+    {
+        var existingPermissionCodes = await dbContext.Permissions
+            .AsNoTracking()
+            .Select(permission => permission.Code)
+            .ToListAsync();
+
+        var existingPermissionCodeSet = existingPermissionCodes.ToHashSet(StringComparer.Ordinal);
+        var missingPermissions = PermissionSeeds
+            .Where(permissionSeed => !existingPermissionCodeSet.Contains(permissionSeed.Code))
+            .Select(permissionSeed => new Permission
+            {
+                Id = Guid.NewGuid(),
+                Code = permissionSeed.Code,
+                Description = permissionSeed.Description
+            })
+            .ToList();
+
+        if (missingPermissions.Count > 0)
+        {
+            await dbContext.Permissions.AddRangeAsync(missingPermissions);
+            await dbContext.SaveChangesAsync();
+            logger.LogInformation("Seed: {PermissionCount} permission eklendi.", missingPermissions.Count);
+        }
+
+        var roleList = await roleManager.Roles
+            .Where(role => role.Name != null)
+            .Select(role => new { role.Name, role.Id })
+            .ToListAsync();
+        var roleIdByName = roleList.ToDictionary(role => role.Name!, role => role.Id, StringComparer.Ordinal);
+
+        var permissionList = await dbContext.Permissions
+            .AsNoTracking()
+            .Select(permission => new { permission.Code, permission.Id })
+            .ToListAsync();
+        var permissionIdByCode = permissionList.ToDictionary(permission => permission.Code, permission => permission.Id, StringComparer.Ordinal);
+
+        var existingAssignments = await dbContext.RolePermissions
+            .AsNoTracking()
+            .Select(rolePermission => new { rolePermission.RoleId, rolePermission.PermissionId })
+            .ToListAsync();
+
+        // DB tabanli yetki yonetimine gectigimiz icin role-permission mapping
+        // tablosunu runtime/manuel olarak yonetmek isteyebiliriz.
+        // Bu nedenle default map backfill'i sadece ilk bootstrap'ta (tablo bosken)
+        // uyguluyoruz; sonrasinda mevcut atamalari zorla degistirmiyoruz.
+        if (existingAssignments.Count > 0)
+            return;
+
+        var existingAssignmentKeys = existingAssignments
+            .Select(assignment => $"{assignment.RoleId}:{assignment.PermissionId}")
+            .ToHashSet(StringComparer.Ordinal);
+
+        var missingAssignments = new List<RolePermission>();
+
+        foreach (var (roleName, permissionCodes) in RolePermissions.Map)
+        {
+            if (!roleIdByName.TryGetValue(roleName, out var roleId))
+                continue;
+
+            foreach (var permissionCode in permissionCodes.Distinct(StringComparer.Ordinal))
+            {
+                if (!permissionIdByCode.TryGetValue(permissionCode, out var permissionId))
+                    continue;
+
+                var assignmentKey = $"{roleId}:{permissionId}";
+                if (existingAssignmentKeys.Contains(assignmentKey))
+                    continue;
+
+                missingAssignments.Add(new RolePermission
+                {
+                    RoleId = roleId,
+                    PermissionId = permissionId
+                });
+                existingAssignmentKeys.Add(assignmentKey);
+            }
+        }
+
+        if (missingAssignments.Count > 0)
+        {
+            await dbContext.RolePermissions.AddRangeAsync(missingAssignments);
+            await dbContext.SaveChangesAsync();
+            logger.LogInformation("Seed: {AssignmentCount} role-permission eşleştirmesi eklendi.", missingAssignments.Count);
+        }
+    }
+
     private sealed record SeedUser(string UserName, string Email, string NameSurname, string Role, DateOnly BirthDate);
+    private sealed record SeedPermission(string Code, string Description);
 }
